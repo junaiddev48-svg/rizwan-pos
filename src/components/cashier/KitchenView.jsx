@@ -1,0 +1,158 @@
+import { useState, useEffect } from 'react'
+import supabase from '../../lib/supabase'
+import { useShift } from '../../contexts/ShiftContext'
+import { CheckCircle, ChefHat, Clock } from 'lucide-react'
+import toast from 'react-hot-toast'
+
+export default function KitchenView({ onClose }) {
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const { activeShift } = useShift()
+
+  useEffect(() => {
+    if (!activeShift) { setLoading(false); return }
+    let isMounted = true
+    let channel
+
+    async function init() {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('shiftId', activeShift.id)
+        .in('status', ['preparing', 'ready'])
+        .order('createdAt', { ascending: true })
+      if (isMounted && !error) {
+        setOrders(data || [])
+        setLoading(false)
+      }
+    }
+
+    init()
+
+    channel = supabase
+      .channel('orders-kitchen')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'orders', filter: `shiftId=eq.${activeShift.id}` },
+        async () => {
+          const { data } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('shiftId', activeShift.id)
+            .in('status', ['preparing', 'ready'])
+            .order('createdAt', { ascending: true })
+          if (isMounted) setOrders(data || [])
+        }
+      )
+      .subscribe()
+
+    return () => {
+      isMounted = false
+      if (channel) supabase.removeChannel(channel)
+    }
+  }, [activeShift])
+
+  async function markReady(order) {
+    const { error } = await supabase.from('orders').update({ status: 'ready' }).eq('id', order.id)
+    if (error) toast.error('Failed to update')
+    else toast.success(`Order #${order.tokenNumber} ready!`)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin w-8 h-8 border-2 border-[#22C55E] border-t-transparent rounded-full" />
+      </div>
+    )
+  }
+
+  const preparing = orders.filter((o) => o.status === 'preparing')
+  const ready = orders.filter((o) => o.status === 'ready')
+
+  return (
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+      <div className="bg-[#0F172A] rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col border border-[#334155]">
+        <div className="flex items-center justify-between p-4 border-b border-[#334155]">
+          <h3 className="text-lg font-bold flex items-center gap-2"><ChefHat size={20} className="text-[#F59E0B]" /> Kitchen View</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-sm">Close</button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {orders.length === 0 ? (
+            <p className="text-center text-slate-500 py-10">No active orders</p>
+          ) : (
+            <>
+              {preparing.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-[#F59E0B] flex items-center gap-1 mb-3">
+                    <Clock size={14} /> PREPARING ({preparing.length})
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {preparing.map((order) => (
+                      <div key={order.id} className="bg-[#1E293B] border border-[#F59E0B]/30 rounded-xl p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <span className="text-2xl font-black text-[#F59E0B]">#{order.tokenNumber}</span>
+                            <span className="text-xs text-slate-500 ml-2">{order.orderType.toUpperCase()}{order.tableNumber ? ` - ${order.tableNumber}` : ''}</span>
+                          </div>
+                          <span className="text-xs text-slate-500">{new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        <div className="space-y-1 text-sm">
+                          {order.items.map((item, i) => (
+                            <div key={i}>
+                              <div className="font-medium">{item.quantity}x {item.name}</div>
+                              {(item.selectedModifiers || []).map((m, mi) => (
+                                <div key={mi} className="text-xs text-slate-400 pl-3">+ {m.name}</div>
+                              ))}
+                              {item.itemNotes && <div className="text-xs text-[#F59E0B] italic pl-3">* {item.itemNotes}</div>}
+                            </div>
+                          ))}
+                        </div>
+                        <button onClick={() => markReady(order)} className="w-full mt-3 bg-[#22C55E] text-[#052E16] font-bold py-3 rounded-xl text-sm hover:bg-[#16A34A] transition flex items-center justify-center gap-2 cursor-pointer">
+                          <CheckCircle size={16} /> Mark Ready
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {ready.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-[#22C55E] flex items-center gap-1 mb-3">
+                    <CheckCircle size={14} /> READY TO SERVE ({ready.length})
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {ready.map((order) => (
+                      <div key={order.id} className="bg-[#1E293B] border border-[#22C55E]/30 rounded-xl p-4">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <span className="text-2xl font-black text-[#22C55E]">#{order.tokenNumber}</span>
+                            <span className="text-xs text-slate-500 ml-2">{order.orderType.toUpperCase()}{order.tableNumber ? ` - ${order.tableNumber}` : ''}</span>
+                          </div>
+                          <button
+                            onClick={async () => {
+                              await supabase.from('orders').update({ status: 'served' }).eq('id', order.id)
+                              toast.success(`Order #${order.tokenNumber} served`)
+                            }}
+                            className="bg-[#3B82F6] text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-[#2563EB] transition cursor-pointer"
+                          >
+                            Mark Served
+                          </button>
+                        </div>
+                        <div className="mt-2 text-sm text-slate-400">
+                          {order.items.map((item, i) => (
+                            <span key={i}>{item.quantity}x {item.name}{i < order.items.length - 1 ? ', ' : ''}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

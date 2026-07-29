@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import supabase from '../../lib/supabase'
-import { X, Printer, ShieldBan } from 'lucide-react'
+import { X, Printer, ShieldBan, CheckCircle, ChefHat, Undo2 } from 'lucide-react'
 import { useShift } from '../../contexts/ShiftContext'
 import { useAuth } from '../../contexts/AuthContext'
 import { printCustomerReceipt } from '../../lib/printing'
@@ -57,15 +57,24 @@ export default function RecentOrders({ onClose }) {
     }
   }, [activeShift])
 
+  async function updateStatus(order, status) {
+    const { error } = await supabase.from('orders').update({ status }).eq('id', order.id)
+    if (error) toast.error('Failed to update')
+    else toast.success(`Order #${order.tokenNumber} ${status}`)
+  }
+
+  async function handleReturn(order) {
+    const { error } = await supabase.from('orders').update({ status: 'cancelled', cancellationReason: 'Returned by customer' }).eq('id', order.id)
+    if (error) toast.error('Failed to process return')
+    else toast.success(`Order #${order.tokenNumber} returned`)
+  }
+
   async function handleVoid() {
     if (!reason.trim()) {
       toast.error('Please enter a reason')
       return
     }
-    const { error } = await supabase
-      .from('orders')
-      .update({ status: 'cancelled', cancellationReason: reason.trim() })
-      .eq('id', voidTarget.id)
+    const { error } = await supabase.from('orders').update({ status: 'cancelled', cancellationReason: reason.trim() }).eq('id', voidTarget.id)
     if (error) toast.error('Failed to void order')
     else {
       toast.success('Order voided')
@@ -80,6 +89,13 @@ export default function RecentOrders({ onClose }) {
   }
 
   if (loading) return <LoadingSpinner />
+
+  const statusColor = {
+    preparing: 'bg-[#F59E0B]/20 text-[#F59E0B]',
+    ready: 'bg-[#22C55E]/20 text-[#22C55E]',
+    served: 'bg-[#3B82F6]/20 text-[#3B82F6]',
+    cancelled: 'bg-[#EF4444]/20 text-[#EF4444]',
+  }
 
   return (
     <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
@@ -103,11 +119,7 @@ export default function RecentOrders({ onClose }) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className="text-lg font-bold text-[#F59E0B]">#{order.tokenNumber}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded ${
-                      order.status === 'cancelled' ? 'bg-[#EF4444]/20 text-[#EF4444]'
-                      : order.status === 'preparing' ? 'bg-[#F59E0B]/20 text-[#F59E0B]'
-                      : 'bg-[#22C55E]/20 text-[#22C55E]'
-                    }`}>
+                    <span className={`text-xs px-2 py-0.5 rounded ${statusColor[order.status] || ''}`}>
                       {order.status.toUpperCase()}
                     </span>
                     <span className="text-xs text-slate-500">{order.orderType.toUpperCase()}</span>
@@ -129,11 +141,26 @@ export default function RecentOrders({ onClose }) {
                   <div className="mt-1 text-xs text-[#EF4444] italic">Reason: {order.cancellationReason}</div>
                 )}
 
-                <div className="flex gap-2 mt-2">
+                <div className="flex gap-2 mt-2 flex-wrap">
                   <button onClick={() => handleReprint(order)} className="btn-secondary text-xs flex items-center gap-1 py-1 px-2 cursor-pointer">
                     <Printer size={12} /> Reprint
                   </button>
-                  {order.status !== 'cancelled' && (
+                  {order.status === 'preparing' && (
+                    <button onClick={() => updateStatus(order, 'ready')} className="text-xs flex items-center gap-1 py-1 px-2 bg-[#22C55E]/10 text-[#22C55E] rounded-lg hover:bg-[#22C55E]/20 transition cursor-pointer">
+                      <CheckCircle size={12} /> Mark Ready
+                    </button>
+                  )}
+                  {order.status === 'ready' && (
+                    <button onClick={() => updateStatus(order, 'served')} className="text-xs flex items-center gap-1 py-1 px-2 bg-[#3B82F6]/10 text-[#3B82F6] rounded-lg hover:bg-[#3B82F6]/20 transition cursor-pointer">
+                      <CheckCircle size={12} /> Served
+                    </button>
+                  )}
+                  {(order.status === 'preparing' || order.status === 'ready') && (
+                    <button onClick={() => handleReturn(order)} className="text-xs flex items-center gap-1 py-1 px-2 bg-[#A855F7]/10 text-[#A855F7] rounded-lg hover:bg-[#A855F7]/20 transition cursor-pointer">
+                      <Undo2 size={12} /> Return
+                    </button>
+                  )}
+                  {order.status !== 'cancelled' && order.status !== 'served' && (
                     <button
                       onClick={() => { setVoidTarget(order); setShowPin(true) }}
                       className="text-xs flex items-center gap-1 py-1 px-2 bg-[#EF4444]/10 text-[#EF4444] rounded-lg hover:bg-[#EF4444]/20 transition cursor-pointer"

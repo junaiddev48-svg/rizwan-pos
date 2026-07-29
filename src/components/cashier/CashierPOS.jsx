@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { WifiOff, RefreshCw } from 'lucide-react'
+import { WifiOff, RefreshCw, ChefHat } from 'lucide-react'
 import ProductGrid from './ProductGrid'
 import CartSidebar from './CartSidebar'
 import ModifierModal from './ModifierModal'
 import PaymentModal from './PaymentModal'
 import RecentOrders from './RecentOrders'
+import KitchenView from './KitchenView'
 import { useOrder } from '../../contexts/OrderContext'
 import { useShift } from '../../contexts/ShiftContext'
 import useNetworkStatus from '../../hooks/useNetworkStatus'
@@ -14,10 +15,13 @@ export default function CashierPOS() {
   const [showModifier, setShowModifier] = useState(null)
   const [showPayment, setShowPayment] = useState(false)
   const [showRecent, setShowRecent] = useState(false)
+  const [showKitchen, setShowKitchen] = useState(false)
   const { addToCart } = useOrder()
   const { activeShift, loading: shiftLoading } = useShift()
   const isOnline = useNetworkStatus()
   const { queuedCount, syncing, flushQueue } = useOfflineSync()
+  const cartLength = useOrder().cart.length
+  const cartSubtotal = useOrder().subtotal
 
   function handleSelectProduct(product) {
     if (product.modifiers && product.modifiers.length > 0) {
@@ -86,7 +90,21 @@ export default function CashierPOS() {
           <ProductGrid onSelectProduct={handleSelectProduct} />
         </div>
 
-        <div className="w-[380px] min-w-[320px] hidden lg:block">
+        <div className="w-[380px] min-w-[320px] hidden lg:block flex flex-col">
+          <div className="flex gap-1 px-3 pt-2 no-print">
+            <button
+              onClick={() => setShowRecent(true)}
+              className="flex-1 text-xs bg-[#334155] text-slate-300 py-2 rounded-lg font-semibold hover:bg-[#475569] transition cursor-pointer"
+            >
+              Orders
+            </button>
+            <button
+              onClick={() => setShowKitchen(true)}
+              className="flex-1 text-xs bg-[#334155] text-slate-300 py-2 rounded-lg font-semibold hover:bg-[#475569] transition flex items-center justify-center gap-1 cursor-pointer"
+            >
+              <ChefHat size={12} /> Kitchen
+            </button>
+          </div>
           <CartSidebar
             onCheckout={() => setShowPayment(true)}
             onRecentOrders={() => setShowRecent(true)}
@@ -96,10 +114,10 @@ export default function CashierPOS() {
         <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40">
           <button
             onClick={() => setShowPayment(true)}
-            disabled={useOrder().cart.length === 0}
+            disabled={cartLength === 0}
             className="w-full bg-[#22C55E] text-[#052E16] font-bold py-4 text-lg disabled:opacity-40 cursor-pointer"
           >
-            VIEW CART & CHECKOUT (Rs. {useOrder().subtotal.toLocaleString()})
+            VIEW CART & CHECKOUT (Rs. {cartSubtotal.toLocaleString()})
           </button>
         </div>
       </div>
@@ -119,6 +137,7 @@ export default function CashierPOS() {
         />
       )}
       {showRecent && <RecentOrders onClose={() => setShowRecent(false)} />}
+      {showKitchen && <KitchenView onClose={() => setShowKitchen(false)} />}
     </div>
   )
 }
