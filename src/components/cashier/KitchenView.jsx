@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react'
 import supabase from '../../lib/supabase'
 import { useShift } from '../../contexts/ShiftContext'
 import { getCachedOrders } from '../../lib/offline'
-import { CheckCircle, ChefHat, Clock } from 'lucide-react'
+import { useCancellations, dismissCancellation } from '../../lib/cancellations'
+import { CheckCircle, ChefHat, Clock, AlertTriangle, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function KitchenView({ onClose }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
+  const cancelled = useCancellations()
   const { activeShift } = useShift()
 
   useEffect(() => {
@@ -97,7 +99,46 @@ export default function KitchenView({ onClose }) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {orders.length === 0 ? (
+          {cancelled.length > 0 && (
+            <div className="bg-[#EF4444]/10 border-2 border-[#EF4444] rounded-xl p-4 animate-pulse">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-bold text-[#EF4444] flex items-center gap-2 text-lg">
+                  <AlertTriangle size={20} /> STOP PREPARING ({cancelled.length})
+                </h4>
+                <span className="text-[10px] text-[#EF4444]/80 font-semibold">DO NOT SERVE THESE ORDERS</span>
+              </div>
+              <div className="space-y-3">
+                {cancelled.map((order) => (
+                  <div key={order.id} className="bg-[#1E293B] border border-[#EF4444]/50 rounded-xl p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <span className="text-2xl font-black text-[#EF4444]">#{order.tokenNumber}</span>
+                        <span className="text-xs text-slate-500 ml-2">{order.orderType.toUpperCase()}{order.tableNumber ? ` - ${order.tableNumber}` : ''}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-[#EF4444] bg-[#EF4444]/10 px-2 py-0.5 rounded font-bold">{order.cancellationReason || 'CANCELLED'}</span>
+                        <button onClick={() => dismissCancellation(order.id)} className="p-1 text-slate-400 hover:text-white hover:bg-[#EF4444]/20 rounded transition cursor-pointer" title="Dismiss">
+                          <X size={16} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-1 text-sm">
+                      {order.items.map((item, i) => (
+                        <div key={i} className="line-through text-[#F87171]">
+                          {item.quantity}x {item.name}
+                          {(item.selectedModifiers || []).map((m, mi) => (
+                            <span key={mi} className="text-xs text-[#F87171]/70 pl-2">+ {m.name}</span>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {orders.length === 0 && cancelled.length === 0 ? (
             <p className="text-center text-slate-500 py-10">No active orders</p>
           ) : (
             <>

@@ -10,12 +10,16 @@ import { useOrder } from '../../contexts/OrderContext'
 import { useShift } from '../../contexts/ShiftContext'
 import useNetworkStatus from '../../hooks/useNetworkStatus'
 import useOfflineSync from '../../hooks/useOfflineSync'
+import useCancellationWatcher from '../../hooks/useCancellationWatcher'
+import { useCancellations } from '../../lib/cancellations'
 
 export default function CashierPOS() {
   const [showModifier, setShowModifier] = useState(null)
   const [showPayment, setShowPayment] = useState(false)
   const [showRecent, setShowRecent] = useState(false)
   const [showKitchen, setShowKitchen] = useState(false)
+  useCancellationWatcher()
+  const cancellations = useCancellations()
   const { addToCart } = useOrder()
   const { activeShift, loading: shiftLoading } = useShift()
   const isOnline = useNetworkStatus()
@@ -100,9 +104,18 @@ export default function CashierPOS() {
             </button>
             <button
               onClick={() => setShowKitchen(true)}
-              className="flex-1 text-xs bg-[#334155] text-slate-300 py-2 rounded-lg font-semibold hover:bg-[#475569] transition flex items-center justify-center gap-1 cursor-pointer"
+              className={`relative flex-1 text-xs py-2 rounded-lg font-semibold transition flex items-center justify-center gap-1 cursor-pointer ${
+                cancellations.length > 0
+                  ? 'bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/40 animate-pulse'
+                  : 'bg-[#334155] text-slate-300 hover:bg-[#475569]'
+              }`}
             >
               <ChefHat size={12} /> Kitchen
+              {cancellations.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 bg-[#EF4444] text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                  {cancellations.length}
+                </span>
+              )}
             </button>
           </div>
           <CartSidebar
