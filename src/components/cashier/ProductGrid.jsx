@@ -148,7 +148,7 @@ export default function ProductGrid({ onSelectProduct }) {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 pb-4" ref={gridRef}>
+      <div className="flex-1 overflow-y-auto px-4 pb-24 lg:pb-4" ref={gridRef}>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           {filtered.map((product) => (
             <div key={product.id} ref={(el) => { tileRefs.current[product.id] = el }}>

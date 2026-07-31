@@ -1,9 +1,10 @@
-import { ShoppingCart, History } from 'lucide-react'
+import { ShoppingCart, History, ChefHat, PanelLeftClose, X } from 'lucide-react'
 import { useOrder } from '../../contexts/OrderContext'
+import { useCancellations } from '../../lib/cancellations'
 import OrderTypeSelector from './OrderTypeSelector'
 import CartItem from './CartItem'
 
-export default function CartSidebar({ onCheckout, onRecentOrders }) {
+export default function CartSidebar({ onCheckout, onRecentOrders, onOpenKitchen, onCollapse, onClose }) {
   const {
     cart,
     orderType,
@@ -18,6 +19,7 @@ export default function CartSidebar({ onCheckout, onRecentOrders }) {
     removeFromCart,
     subtotal,
   } = useOrder()
+  const cancellations = useCancellations()
 
   function handleUpdateQty(item, delta) {
     updateQuantity(item.productId, delta, item.selectedModifiers, item.itemNotes)
@@ -28,7 +30,41 @@ export default function CartSidebar({ onCheckout, onRecentOrders }) {
   }
 
   return (
-    <div className="w-full h-full flex flex-col bg-[#1E293B] border-l border-[#334155]">
+    <div className="h-full flex flex-col bg-[#1E293B] lg:border-l lg:border-[#334155] rounded-t-2xl lg:rounded-none">
+      <div className="p-3 border-b border-[#334155] flex items-center justify-between no-print">
+        <h3 className="font-bold text-sm tracking-wide flex items-center gap-2">
+          <ShoppingCart size={16} className="text-[#F59E0B]" />
+          CURRENT ORDER
+        </h3>
+        <div className="flex items-center gap-1">
+          {onRecentOrders && (
+            <button onClick={onRecentOrders} className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#334155] transition cursor-pointer" title="Recent Orders">
+              <History size={16} />
+            </button>
+          )}
+          {onOpenKitchen && (
+            <button onClick={onOpenKitchen} className="relative p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#334155] transition cursor-pointer" title="Kitchen View">
+              <ChefHat size={16} />
+              {cancellations.length > 0 && (
+                <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-[#EF4444] text-white text-[9px] font-bold rounded-full flex items-center justify-center animate-pulse">
+                  {cancellations.length}
+                </span>
+              )}
+            </button>
+          )}
+          {onCollapse && (
+            <button onClick={onCollapse} className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#334155] transition cursor-pointer hidden lg:block" title="Collapse panel">
+              <PanelLeftClose size={16} />
+            </button>
+          )}
+          {onClose && (
+            <button onClick={onClose} className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#334155] transition cursor-pointer lg:hidden" title="Close cart">
+              <X size={18} />
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="p-3 border-b border-[#334155]">
         <OrderTypeSelector
           orderType={orderType}
@@ -71,22 +107,13 @@ export default function CartSidebar({ onCheckout, onRecentOrders }) {
           <span className="font-bold text-xl text-[#F59E0B]">Rs. {subtotal.toLocaleString()}</span>
         </div>
 
-        <div className="flex gap-2">
-          <button
-            onClick={onCheckout}
-            disabled={cart.length === 0 || (!tableNumber && orderType === 'dine_in')}
-            className="flex-1 btn-cash disabled:opacity-40 disabled:cursor-not-allowed text-center cursor-pointer"
-          >
-            SETTLE PAYMENT
-          </button>
-          <button
-            onClick={onRecentOrders}
-            className="btn-secondary flex items-center justify-center gap-1 cursor-pointer"
-            title="Recent Orders"
-          >
-            <History size={18} />
-          </button>
-        </div>
+        <button
+          onClick={onCheckout}
+          disabled={cart.length === 0 || (!tableNumber && orderType === 'dine_in')}
+          className="w-full btn-cash disabled:opacity-40 disabled:cursor-not-allowed text-center cursor-pointer"
+        >
+          SETTLE PAYMENT
+        </button>
       </div>
     </div>
   )

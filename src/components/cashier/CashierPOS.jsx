@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { WifiOff, RefreshCw, ChefHat } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { WifiOff, RefreshCw, ChefHat, History, ShoppingCart } from 'lucide-react'
 import ProductGrid from './ProductGrid'
 import CartSidebar from './CartSidebar'
 import ModifierModal from './ModifierModal'
@@ -13,11 +13,21 @@ import useOfflineSync from '../../hooks/useOfflineSync'
 import useCancellationWatcher from '../../hooks/useCancellationWatcher'
 import { useCancellations } from '../../lib/cancellations'
 
+const MIN_WIDTH = 300
+const MAX_WIDTH = 520
+
 export default function CashierPOS() {
   const [showModifier, setShowModifier] = useState(null)
   const [showPayment, setShowPayment] = useState(false)
   const [showRecent, setShowRecent] = useState(false)
   const [showKitchen, setShowKitchen] = useState(false)
+  const [showCartDrawer, setShowCartDrawer] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => localStorage.getItem('rizwan_sidebar_collapsed') === '1'
+  )
+  const [sidebarWidth, setSidebarWidth] = useState(
+    () => parseInt(localStorage.getItem('rizwan_sidebar_width')) || 380
+  )
   useCancellationWatcher()
   const cancellations = useCancellations()
   const { addToCart } = useOrder()
@@ -26,6 +36,44 @@ export default function CashierPOS() {
   const { queuedCount, syncing, flushQueue } = useOfflineSync()
   const cartLength = useOrder().cart.length
   const cartSubtotal = useOrder().subtotal
+  const dragRef = useRef(null)
+
+  useEffect(() => {
+    if (!showCartDrawer) return
+    function onKey(e) {
+      if (e.key === 'Escape') setShowCartDrawer(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showCartDrawer])
+
+  function startResize(e) {
+    if (sidebarCollapsed) return
+    e.preventDefault()
+    dragRef.current = { startX: e.clientX, startWidth: sidebarWidth }
+    window.addEventListener('pointermove', onResize)
+    window.addEventListener('pointerup', stopResize)
+  }
+
+  function onResize(e) {
+    if (!dragRef.current) return
+    const w = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, dragRef.current.startWidth + (e.clientX - dragRef.current.startX)))
+    setSidebarWidth(w)
+    localStorage.setItem('rizwan_sidebar_width', String(w))
+  }
+
+  function stopResize() {
+    dragRef.current = null
+    window.removeEventListener('pointermove', onResize)
+    window.removeEventListener('pointerup', stopResize)
+  }
+
+  function toggleCollapse() {
+    setSidebarCollapsed((prev) => {
+      localStorage.setItem('rizwan_sidebar_collapsed', prev ? '0' : '1')
+      return !prev
+    })
+  }
 
   function handleSelectProduct(product) {
     if (product.modifiers && product.modifiers.length > 0) {
@@ -94,46 +142,95 @@ export default function CashierPOS() {
           <ProductGrid onSelectProduct={handleSelectProduct} />
         </div>
 
-        <div className="w-[380px] min-w-[320px] hidden lg:block flex flex-col">
-          <div className="flex gap-1 px-3 pt-2 no-print">
-            <button
-              onClick={() => setShowRecent(true)}
-              className="flex-1 text-xs bg-[#334155] text-slate-300 py-2 rounded-lg font-semibold hover:bg-[#475569] transition cursor-pointer"
-            >
-              Orders
+        <div
+          onPointerDown={startResize}
+          className="hidden lg:block w-1.5 cursor-col-resize bg-[#334155]/40 hover:bg-[#22C55E]/60 active:bg-[#22C55E] transition-colors flex-shrink-0 no-print"
+          title="Drag to resize"
+        />
+
+        {sidebarCollapsed ? (
+          <div className="hidden lg:flex flex-col items-center gap-2 w-14 bg-[#1E293B] border-l border-[#334155] py-3 flex-shrink-0 no-print">
+            <button onClick={toggleCollapse} className="relative p-2.5 rounded-xl bg-[#334155] text-slate-300 hover:bg-[#475569] transition cursor-pointer" title="Expand cart">
+              <ShoppingCart size={18} />
+              {cartLength > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-0.5 bg-[#F59E0B] text-[#052E16] text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {cartLength}
+                </span>
+              )}
             </button>
-            <button
-              onClick={() => setShowKitchen(true)}
-              className={`relative flex-1 text-xs py-2 rounded-lg font-semibold transition flex items-center justify-center gap-1 cursor-pointer ${
-                cancellations.length > 0
-                  ? 'bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/40 animate-pulse'
-                  : 'bg-[#334155] text-slate-300 hover:bg-[#475569]'
-              }`}
-            >
-              <ChefHat size={12} /> Kitchen
+            <button onClick={() => setShowRecent(true)} className="relative p-2.5 rounded-xl bg-[#334155] text-slate-300 hover:bg-[#475569] transition cursor-pointer" title="Recent Orders">
+              <History size={18} />
+            </button>
+            <button onClick={() => setShowKitchen(true)} className="relative p-2.5 rounded-xl bg-[#334155] text-slate-300 hover:bg-[#475569] transition cursor-pointer" title="Kitchen View">
+              <ChefHat size={18} />
               {cancellations.length > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 bg-[#EF4444] text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-0.5 bg-[#EF4444] text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
                   {cancellations.length}
                 </span>
               )}
             </button>
           </div>
-          <CartSidebar
-            onCheckout={() => setShowPayment(true)}
-            onRecentOrders={() => setShowRecent(true)}
-          />
-        </div>
+        ) : (
+          <div className="hidden lg:flex flex-col h-full flex-shrink-0" style={{ width: `${sidebarWidth}px` }}>
+            <CartSidebar
+              onCheckout={() => setShowPayment(true)}
+              onRecentOrders={() => setShowRecent(true)}
+              onOpenKitchen={() => setShowKitchen(true)}
+              onCollapse={toggleCollapse}
+            />
+          </div>
+        )}
+      </div>
 
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 no-print">
+        <div className="flex items-stretch bg-[#1E293B] border-t border-[#334155]">
           <button
-            onClick={() => setShowPayment(true)}
-            disabled={cartLength === 0}
-            className="w-full bg-[#22C55E] text-[#052E16] font-bold py-4 text-lg disabled:opacity-40 cursor-pointer"
+            onClick={() => setShowKitchen(true)}
+            className="relative w-16 flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold text-slate-300 hover:bg-[#334155] transition cursor-pointer"
           >
-            VIEW CART & CHECKOUT (Rs. {cartSubtotal.toLocaleString()})
+            <ChefHat size={20} />
+            Kitchen
+            {cancellations.length > 0 && (
+              <span className="absolute top-1 right-2 min-w-4 h-4 px-0.5 bg-[#EF4444] text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
+                {cancellations.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setShowRecent(true)}
+            className="w-16 flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold text-slate-300 hover:bg-[#334155] transition cursor-pointer"
+          >
+            <History size={20} />
+            Orders
+          </button>
+          <button
+            onClick={() => setShowCartDrawer(true)}
+            disabled={cartLength === 0}
+            className="flex-1 bg-[#22C55E] text-[#052E16] font-bold py-3 text-base disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+          >
+            VIEW CART{cartLength > 0 ? ` (${cartLength})` : ''} — Rs. {cartSubtotal.toLocaleString()}
           </button>
         </div>
       </div>
+
+      {showCartDrawer && (
+        <div className="lg:hidden fixed inset-0 bg-black/70 z-50 flex items-end justify-center no-print">
+          <div className="absolute inset-0" onClick={() => setShowCartDrawer(false)} />
+          <div className="relative w-full max-w-lg bg-[#1E293B] rounded-t-2xl max-h-[92vh] flex flex-col slide-up">
+            <div className="pt-2 pb-1 flex justify-center">
+              <div className="w-10 h-1 rounded-full bg-[#475569]" />
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <CartSidebar
+                onCheckout={() => { setShowCartDrawer(false); setShowPayment(true) }}
+                onRecentOrders={() => { setShowCartDrawer(false); setShowRecent(true) }}
+                onOpenKitchen={() => { setShowCartDrawer(false); setShowKitchen(true) }}
+                onClose={() => setShowCartDrawer(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {showModifier && (
         <ModifierModal
