@@ -1,12 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import supabase from '../../lib/supabase'
-import { X, Printer, ShieldBan, CheckCircle, ChefHat, Undo2 } from 'lucide-react'
+import { X, Printer, ShieldBan, CheckCircle, Undo2 } from 'lucide-react'
 import { useShift } from '../../contexts/ShiftContext'
 import { useAuth } from '../../contexts/AuthContext'
 import { printCustomerReceipt } from '../../lib/printing'
+import { getCachedOrders, cacheOrders } from '../../lib/offline'
 import PinInput from '../shared/PinInput'
 import LoadingSpinner from '../shared/LoadingSpinner'
 import toast from 'react-hot-toast'
+
+const LIMIT = 50
 
 export default function RecentOrders({ onClose }) {
   const [orders, setOrders] = useState([])
@@ -17,36 +20,51 @@ export default function RecentOrders({ onClose }) {
   const { activeShift } = useShift()
   const { verifyPin } = useAuth()
 
+  const refetch = useCallback(async (isMounted) => {
+    if (!activeShift) return
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('shiftId', activeShift.id)
+      .order('createdAt', { ascending: false })
+      .limit(LIMIT)
+    if (!error && data) {
+      if (isMounted) setOrders(data)
+      cacheOrders(data)
+    }
+  }, [activeShift])
+
   useEffect(() => {
     if (!activeShift) { setLoading(false); return }
     let isMounted = true
     let channel
 
-    async function init() {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('shiftId', activeShift.id)
-        .order('createdAt', { ascending: false })
-      if (isMounted) {
-        if (!error) setOrders(data || [])
-        setLoading(false)
-      }
+    const cached = getCachedOrders()
+    if (cached && cached.length > 0) {
+      setOrders(cached.filter((o) => o.shiftId === activeShift.id).slice(0, LIMIT))
+      setLoading(false)
     }
 
-    init()
+    refetch(isMounted).finally(() => { if (isMounted) setLoading(false) })
 
     channel = supabase
       .channel('orders-recent')
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'orders', filter: `shiftId=eq.${activeShift.id}` },
-        async () => {
-          const { data } = await supabase
-            .from('orders')
-            .select('*')
-            .eq('shiftId', activeShift.id)
-            .order('createdAt', { ascending: false })
-          if (isMounted) setOrders(data || [])
+        (payload) => {
+          if (!isMounted) return
+          setOrders((prev) => {
+            let next
+            if (payload.eventType === 'DELETE') {
+              next = prev.filter((o) => o.id !== payload.old.id)
+            } else {
+              const fresh = payload.eventType === 'INSERT' ? payload.new : payload.new
+              const without = prev.filter((o) => o.id !== fresh.id)
+              next = [fresh, ...without]
+            }
+            cacheOrders(next)
+            return next.slice(0, LIMIT)
+          })
         }
       )
       .subscribe()
@@ -55,7 +73,15 @@ export default function RecentOrders({ onClose }) {
       isMounted = false
       if (channel) supabase.removeChannel(channel)
     }
-  }, [activeShift])
+  }, [activeShift, refetch])
+
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
 
   async function updateStatus(order, status) {
     const { error } = await supabase.from('orders').update({ status }).eq('id', order.id)
@@ -98,11 +124,11 @@ export default function RecentOrders({ onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onKeyDown={(e) => e.key === 'Escape' && onClose()}>
       <div className="bg-[#0F172A] rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-[#334155]">
         <div className="flex items-center justify-between p-4 border-b border-[#334155]">
           <h3 className="text-lg font-bold">Recent Orders</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={22} /></button>
+          <button onClick={onClose} className="text-slate-400 hover:text-white cursor-pointer"><X size={22} /></button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
@@ -197,6 +223,10 @@ export default function RecentOrders({ onClose }) {
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); handleVoid() }
+                if (e.key === 'Escape') { setVoidTarget(null); setReason('') }
+              }}
               placeholder="Enter reason for void..."
               rows={3}
               className="w-full bg-[#334155] text-slate-100 rounded-xl px-3 py-2 text-sm border border-[#475569] placeholder-slate-500 resize-none mb-4"

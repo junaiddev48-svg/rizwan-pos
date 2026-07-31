@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Banknote, Smartphone, WifiOff } from 'lucide-react'
 import { useOrder } from '../../contexts/OrderContext'
 import { useShift } from '../../contexts/ShiftContext'
@@ -64,11 +64,17 @@ export default function PaymentModal({ onClose, onOrderQueued }) {
           .select()
           .single()
 
-        if (error) throw error
-
-        printCustomerReceipt(data)
-        printKitchenKOT(data)
-        toast.success(`Order #${tokenNum} placed!`)
+        if (error) {
+          addToOrderQueue(orderData)
+          printCustomerReceipt(orderData)
+          printKitchenKOT(orderData)
+          toast.success(`Order #${tokenNum} saved locally — will sync when online!`, { duration: 4000 })
+          onOrderQueued?.()
+        } else {
+          printCustomerReceipt(data)
+          printKitchenKOT(data)
+          toast.success(`Order #${tokenNum} placed!`)
+        }
       } else {
         addToOrderQueue(orderData)
         printCustomerReceipt(orderData)
@@ -84,6 +90,18 @@ export default function PaymentModal({ onClose, onOrderQueued }) {
     }
     setProcessing(false)
   }
+
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (e.key === 'Escape') onClose()
+      if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+        e.preventDefault()
+        if (!processing) handleSettle()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [processing, isOnline, cart, subtotal, orderType, tableNumber, customerPhone, customerAddress, activeShift, onClose, onOrderQueued])
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">

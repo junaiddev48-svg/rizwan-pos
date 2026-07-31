@@ -1,9 +1,23 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Plus } from 'lucide-react'
 
 export default function ModifierModal({ product, onConfirm, onCancel }) {
   const [selectedMods, setSelectedMods] = useState([])
   const [notes, setNotes] = useState('')
+
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (e.key === 'Escape') onCancel()
+      if (e.key === 'Enter') {
+        const tag = e.target.tagName
+        if (tag === 'TEXTAREA' || tag === 'BUTTON') return
+        e.preventDefault()
+        onConfirm(product, selectedMods, notes)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onConfirm, onCancel, product, selectedMods, notes])
 
   function toggleMod(modifier) {
     setSelectedMods((prev) =>

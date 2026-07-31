@@ -26,14 +26,20 @@ export function removeCache(key) {
   localStorage.removeItem(CACHE_PREFIX + key)
 }
 
-const PRODUCTS_KEY = CACHE_PREFIX + 'products'
-
 export function cacheProducts(products) {
   setCache('products', products, 1440)
 }
 
 export function getCachedProducts() {
   return getCache('products')
+}
+
+export function cacheOrders(orders) {
+  setCache('orders', orders, 1440)
+}
+
+export function getCachedOrders() {
+  return getCache('orders')
 }
 
 const QUEUE_KEY = CACHE_PREFIX + 'order_queue'

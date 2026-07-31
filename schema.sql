@@ -50,6 +50,14 @@ ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS orders;
 ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS shifts;
 ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS token_counter;
 
+-- Performance indexes (safe to re-run)
+CREATE INDEX IF NOT EXISTS idx_orders_shiftId ON orders ("shiftId");
+CREATE INDEX IF NOT EXISTS idx_orders_createdAt ON orders ("createdAt" DESC);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON orders (status);
+CREATE INDEX IF NOT EXISTS idx_orders_shiftId_status ON orders ("shiftId", status);
+CREATE INDEX IF NOT EXISTS idx_products_category ON products (category);
+
+
 -- Seed products (only inserts if table is empty)
 INSERT INTO products (name, price, category, "isAvailable", modifiers)
 SELECT * FROM (VALUES

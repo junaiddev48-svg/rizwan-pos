@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import supabase from '../../lib/supabase'
 import { useShift } from '../../contexts/ShiftContext'
+import { getCachedOrders } from '../../lib/offline'
 import { CheckCircle, ChefHat, Clock } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -13,6 +14,12 @@ export default function KitchenView({ onClose }) {
     if (!activeShift) { setLoading(false); return }
     let isMounted = true
     let channel
+
+    const cached = getCachedOrders()
+    if (cached && cached.length > 0) {
+      setOrders(cached.filter((o) => o.shiftId === activeShift.id && ['preparing', 'ready'].includes(o.status)))
+      setLoading(false)
+    }
 
     async function init() {
       const { data, error } = await supabase
@@ -33,14 +40,19 @@ export default function KitchenView({ onClose }) {
       .channel('orders-kitchen')
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'orders', filter: `shiftId=eq.${activeShift.id}` },
-        async () => {
-          const { data } = await supabase
-            .from('orders')
-            .select('*')
-            .eq('shiftId', activeShift.id)
-            .in('status', ['preparing', 'ready'])
-            .order('createdAt', { ascending: true })
-          if (isMounted) setOrders(data || [])
+        (payload) => {
+          if (!isMounted) return
+          const changed = payload.eventType === 'DELETE' ? payload.old : payload.new
+          setOrders((prev) => {
+            if (payload.eventType === 'DELETE') {
+              return prev.filter((o) => o.id !== changed.id)
+            }
+            if (!['preparing', 'ready'].includes(changed.status)) {
+              return prev.filter((o) => o.id !== changed.id)
+            }
+            const without = prev.filter((o) => o.id !== changed.id)
+            return [...without, changed].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+          })
         }
       )
       .subscribe()
@@ -51,13 +63,21 @@ export default function KitchenView({ onClose }) {
     }
   }, [activeShift])
 
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
   async function markReady(order) {
     const { error } = await supabase.from('orders').update({ status: 'ready' }).eq('id', order.id)
     if (error) toast.error('Failed to update')
     else toast.success(`Order #${order.tokenNumber} ready!`)
   }
 
-  if (loading) {
+  if (loading && orders.length === 0) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="animate-spin w-8 h-8 border-2 border-[#22C55E] border-t-transparent rounded-full" />
@@ -73,7 +93,7 @@ export default function KitchenView({ onClose }) {
       <div className="bg-[#0F172A] rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col border border-[#334155]">
         <div className="flex items-center justify-between p-4 border-b border-[#334155]">
           <h3 className="text-lg font-bold flex items-center gap-2"><ChefHat size={20} className="text-[#F59E0B]" /> Kitchen View</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-white text-sm">Close</button>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-sm cursor-pointer">Close</button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">

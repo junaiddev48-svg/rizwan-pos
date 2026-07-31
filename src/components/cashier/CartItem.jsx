@@ -4,8 +4,26 @@ export default function CartItem({ item, onUpdateQty, onRemove }) {
   const modTotal = (item.selectedModifiers || []).reduce((s, m) => s + m.additionalPrice, 0)
   const lineTotal = (item.basePrice + modTotal) * item.quantity
 
+  function handleKeyDown(e) {
+    if (e.key === '+' || e.key === '=') {
+      e.preventDefault()
+      onUpdateQty(item, 1)
+    } else if (e.key === '-' || e.key === '_') {
+      e.preventDefault()
+      onUpdateQty(item, -1)
+    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault()
+      onRemove(item)
+    }
+  }
+
   return (
-    <div className="bg-[#334155] rounded-lg p-2 text-sm">
+    <div
+      data-cart
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      className="bg-[#334155] rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#22C55E]"
+    >
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <div className="font-semibold truncate">{item.quantity}x {item.name}</div>
@@ -27,18 +45,19 @@ export default function CartItem({ item, onUpdateQty, onRemove }) {
 
       <div className="flex items-center gap-2 mt-2">
         <div className="flex items-center gap-1 bg-[#1E293B] rounded-lg">
-          <button onClick={() => onUpdateQty(item, -1)} className="p-1.5 hover:text-[#22C55E] transition">
+          <button onClick={() => onUpdateQty(item, -1)} className="p-1.5 hover:text-[#22C55E] transition cursor-pointer" title="Decrease (-)">
             <Minus size={14} />
           </button>
           <span className="w-6 text-center font-bold text-sm">{item.quantity}</span>
-          <button onClick={() => onUpdateQty(item, 1)} className="p-1.5 hover:text-[#22C55E] transition">
+          <button onClick={() => onUpdateQty(item, 1)} className="p-1.5 hover:text-[#22C55E] transition cursor-pointer" title="Increase (+)">
             <Plus size={14} />
           </button>
         </div>
-        <button onClick={() => onRemove(item)} className="p-1.5 text-[#EF4444] hover:bg-[#EF4444]/10 rounded-lg transition ml-auto">
+        <button onClick={() => onRemove(item)} className="p-1.5 text-[#EF4444] hover:bg-[#EF4444]/10 rounded-lg transition ml-auto cursor-pointer" title="Remove (Delete)">
           <Trash2 size={14} />
         </button>
       </div>
+      <div className="text-[10px] text-slate-500 mt-1">Keys: <span className="text-slate-400 font-semibold">+</span>/<span className="text-slate-400 font-semibold">-</span> qty &middot; <span className="text-slate-400 font-semibold">Del</span> remove</div>
     </div>
   )
 }
