@@ -214,7 +214,7 @@ export default function CashierPOS() {
       </div>
 
       {showCartDrawer && (
-        <div className="lg:hidden fixed inset-0 bg-black/70 z-50 flex items-end justify-center no-print">
+        <div data-modal className="lg:hidden fixed inset-0 bg-black/70 z-50 flex items-end justify-center no-print">
           <div className="absolute inset-0" onClick={() => setShowCartDrawer(false)} />
           <div className="relative w-full max-w-lg bg-[#1E293B] rounded-t-2xl max-h-[92vh] flex flex-col slide-up">
             <div className="pt-2 pb-1 flex justify-center">

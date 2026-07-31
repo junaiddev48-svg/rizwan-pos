@@ -77,11 +77,18 @@ export default function RecentOrders({ onClose }) {
 
   useEffect(() => {
     function onKeyDown(e) {
-      if (e.key === 'Escape') onClose()
+      if (e.key !== 'Escape') return
+      if (voidTarget) {
+        e.stopPropagation()
+        setVoidTarget(null)
+        setReason('')
+        return
+      }
+      onClose()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
+  }, [onClose, voidTarget])
 
   async function updateStatus(order, status) {
     const { error } = await supabase.from('orders').update({ status }).eq('id', order.id)
@@ -124,7 +131,7 @@ export default function RecentOrders({ onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onKeyDown={(e) => e.key === 'Escape' && onClose()}>
+    <div data-modal className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
       <div className="bg-[#0F172A] rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-[#334155]">
         <div className="flex items-center justify-between p-4 border-b border-[#334155]">
           <h3 className="text-lg font-bold">Recent Orders</h3>

@@ -34,7 +34,7 @@ export default function ModifierModal({ product, onConfirm, onCancel }) {
   const modTotal = selectedMods.reduce((s, m) => s + m.additionalPrice, 0)
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+    <div data-modal className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
       <div className="bg-[#1E293B] rounded-2xl w-full max-w-md border border-[#334155] max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-4 border-b border-[#334155]">
           <div>

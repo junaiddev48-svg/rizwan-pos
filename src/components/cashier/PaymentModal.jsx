@@ -93,7 +93,7 @@ export default function PaymentModal({ onClose, onOrderQueued }) {
 
   useEffect(() => {
     function onKeyDown(e) {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape' && !processing) onClose()
       if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
         e.preventDefault()
         if (!processing) handleSettle()
@@ -104,7 +104,7 @@ export default function PaymentModal({ onClose, onOrderQueued }) {
   }, [processing, isOnline, cart, subtotal, orderType, tableNumber, customerPhone, customerAddress, activeShift, onClose, onOrderQueued])
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+    <div data-modal className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
       <div className="bg-[#1E293B] rounded-2xl w-full max-w-md border border-[#334155]">
         <div className="flex items-center justify-between p-4 border-b border-[#334155]">
           <h3 className="text-lg font-bold">Settle Payment</h3>

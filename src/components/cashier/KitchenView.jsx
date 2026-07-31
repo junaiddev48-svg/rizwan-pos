@@ -91,7 +91,7 @@ export default function KitchenView({ onClose }) {
   const ready = orders.filter((o) => o.status === 'ready')
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+    <div data-modal className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
       <div className="bg-[#0F172A] rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col border border-[#334155]">
         <div className="flex items-center justify-between p-4 border-b border-[#334155]">
           <h3 className="text-lg font-bold flex items-center gap-2"><ChefHat size={20} className="text-[#F59E0B]" /> Kitchen View</h3>

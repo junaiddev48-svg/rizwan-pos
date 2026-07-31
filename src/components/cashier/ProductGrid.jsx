@@ -95,6 +95,12 @@ export default function ProductGrid({ onSelectProduct }) {
 
   useEffect(() => {
     function onKeyDown(e) {
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      const target = e.target || document.activeElement
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) return
+      if (target && target.closest && (target.closest('[data-modal]') || target.closest('[data-cart]'))) return
+      if (document.activeElement && document.activeElement.closest && (document.activeElement.closest('[data-modal]') || document.activeElement.closest('[data-cart]'))) return
+
       if (e.key >= '1' && e.key <= '9') {
         const cat = CATEGORIES[parseInt(e.key) - 1]
         if (cat) {
@@ -103,10 +109,6 @@ export default function ProductGrid({ onSelectProduct }) {
         }
         return
       }
-      if (e.ctrlKey || e.metaKey || e.altKey) return
-      const target = e.target
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) return
-      if (target && target.closest && target.closest('[data-cart]')) return
 
       const cols = window.innerWidth >= 768 ? 4 : window.innerWidth >= 640 ? 3 : 2
       switch (e.key) {
