@@ -12,6 +12,8 @@ export default function PinInput({ onConfirm, onCancel, title }) {
         return
       }
       if (e.key >= '0' && e.key <= '9' && pin.length < 4) {
+        const ae = document.activeElement
+        if (!(ae && ae.closest && ae.closest('[data-modal]'))) return
         e.preventDefault()
         setError(false)
         const next = pin + e.key

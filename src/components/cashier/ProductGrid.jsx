@@ -93,45 +93,37 @@ export default function ProductGrid({ onSelectProduct }) {
     el?.scrollIntoView({ block: 'nearest' })
   }
 
-  useEffect(() => {
-    function onKeyDown(e) {
-      if (e.ctrlKey || e.metaKey || e.altKey) return
-      const target = e.target || document.activeElement
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) return
-      if (target && target.closest && (target.closest('[data-modal]') || target.closest('[data-cart]'))) return
-      if (document.activeElement && document.activeElement.closest && (document.activeElement.closest('[data-modal]') || document.activeElement.closest('[data-cart]'))) return
+  function handleKeyDown(e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return
 
-      if (e.key >= '1' && e.key <= '9') {
-        const cat = CATEGORIES[parseInt(e.key) - 1]
-        if (cat) {
-          e.preventDefault()
-          setActiveCategory(cat.id)
-        }
-        return
+    if (e.key >= '1' && e.key <= '9') {
+      const cat = CATEGORIES[parseInt(e.key) - 1]
+      if (cat) {
+        e.preventDefault()
+        setActiveCategory(cat.id)
       }
-
-      const cols = window.innerWidth >= 768 ? 4 : window.innerWidth >= 640 ? 3 : 2
-      switch (e.key) {
-        case 'ArrowRight': e.preventDefault(); moveFocus(1, cols); break
-        case 'ArrowLeft': e.preventDefault(); moveFocus(-1, cols); break
-        case 'ArrowDown': e.preventDefault(); moveFocus(cols, cols); break
-        case 'ArrowUp': e.preventDefault(); moveFocus(-cols, cols); break
-        case 'Enter':
-          if (focusedIndex >= 0 && filtered[focusedIndex]) {
-            e.preventDefault()
-            onSelectProduct(filtered[focusedIndex])
-          }
-          break
-      }
+      return
     }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [filtered, focusedIndex, onSelectProduct])
+
+    const cols = window.innerWidth >= 768 ? 4 : window.innerWidth >= 640 ? 3 : 2
+    switch (e.key) {
+      case 'ArrowRight': e.preventDefault(); moveFocus(1, cols); break
+      case 'ArrowLeft': e.preventDefault(); moveFocus(-1, cols); break
+      case 'ArrowDown': e.preventDefault(); moveFocus(cols, cols); break
+      case 'ArrowUp': e.preventDefault(); moveFocus(-cols, cols); break
+      case 'Enter':
+        if (focusedIndex >= 0 && filtered[focusedIndex]) {
+          e.preventDefault()
+          onSelectProduct(filtered[focusedIndex])
+        }
+        break
+    }
+  }
 
   if (loading && products.length === 0) return <LoadingSpinner text="Loading menu..." />
 
   return (
-    <div className="flex flex-col h-full">
+    <div data-grid onKeyDown={handleKeyDown} className="flex flex-col h-full">
       <div className="flex gap-2 overflow-x-auto pb-3 px-4 pt-4 no-print" role="tablist">
         {CATEGORIES.map((cat, i) => (
           <button
