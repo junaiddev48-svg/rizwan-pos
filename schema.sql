@@ -45,10 +45,25 @@ CREATE TABLE IF NOT EXISTS token_counter (
   counter INTEGER DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS staff (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  pin TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'cashier',
+  "isActive" BOOLEAN DEFAULT true,
+  "createdAt" TIMESTAMPTZ DEFAULT NOW()
+);
+
 ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS products;
 ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS orders;
 ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS shifts;
 ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS token_counter;
+ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS staff;
+
+-- Seed owner account (only if staff table is empty)
+INSERT INTO staff (name, pin, role)
+SELECT 'Owner', '1234', 'owner'
+WHERE NOT EXISTS (SELECT 1 FROM staff LIMIT 1);
 
 -- Performance indexes (safe to re-run)
 CREATE INDEX IF NOT EXISTS idx_orders_shiftId ON orders ("shiftId");

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import supabase from '../../lib/supabase'
 import { useShift } from '../../contexts/ShiftContext'
+import { useAuth } from '../../contexts/AuthContext'
 import ZReport from './ZReport'
-import { Play, Square, FileText, Clock, User } from 'lucide-react'
+import { Play, Square, FileText, Clock, User, Lock } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function ShiftManager() {
@@ -11,6 +12,7 @@ export default function ShiftManager() {
   const [showZReport, setShowZReport] = useState(false)
   const [selectedShift, setSelectedShift] = useState(null)
   const { activeShift, shifts, loading, openShift, closeShift } = useShift()
+  const { user, isOwner } = useAuth()
 
   useEffect(() => {
     if (!activeShift) return
@@ -90,7 +92,7 @@ export default function ShiftManager() {
               <input
                 value={cashierName}
                 onChange={(e) => setCashierName(e.target.value)}
-                placeholder="Enter cashier name"
+                placeholder={isOwner ? 'Enter cashier name' : user?.name || 'Enter your name'}
                 className="w-full bg-[#334155] text-slate-100 rounded-xl px-4 py-3 text-sm border border-[#475569] placeholder-slate-500"
               />
             </div>
@@ -112,9 +114,15 @@ export default function ShiftManager() {
                   Opened by <strong className="text-white">{activeShift.openedBy}</strong> at {new Date(activeShift.openedAt).toLocaleTimeString()}
                 </p>
               </div>
-              <button onClick={handleClose} className="bg-[#EF4444] text-white font-bold px-4 py-2 rounded-xl hover:bg-[#DC2626] transition flex items-center gap-2 cursor-pointer">
-                <Square size={16} /> Close Shift
-              </button>
+              {isOwner ? (
+                <button onClick={handleClose} className="bg-[#EF4444] text-white font-bold px-4 py-2 rounded-xl hover:bg-[#DC2626] transition flex items-center gap-2 cursor-pointer">
+                  <Square size={16} /> Close Shift
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 text-[#F59E0B] text-xs bg-[#F59E0B]/10 px-3 py-2 rounded-xl" title="Only the owner can close a shift">
+                  <Lock size={14} /> Owner only can close
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-3 gap-4 text-center">
@@ -135,29 +143,31 @@ export default function ShiftManager() {
             </div>
           </div>
 
-          <div className="bg-[#1E293B] border border-[#334155] rounded-xl p-6">
-            <h3 className="font-bold mb-4 flex items-center gap-2"><Clock size={16} /> Shift History</h3>
-            <div className="space-y-2">
-              {shifts.filter((s) => s.status === 'closed').map((s) => (
-                <div key={s.id} className="flex items-center justify-between bg-[#334155] rounded-lg p-3 text-sm">
-                  <div className="flex items-center gap-3">
-                    <User size={14} className="text-slate-400" />
-                    <span>{s.openedBy}</span>
-                    <span className="text-slate-500">{new Date(s.openedAt).toLocaleDateString()}</span>
+          {isOwner && (
+            <div className="bg-[#1E293B] border border-[#334155] rounded-xl p-6">
+              <h3 className="font-bold mb-4 flex items-center gap-2"><Clock size={16} /> Shift History</h3>
+              <div className="space-y-2">
+                {shifts.filter((s) => s.status === 'closed').map((s) => (
+                  <div key={s.id} className="flex items-center justify-between bg-[#334155] rounded-lg p-3 text-sm">
+                    <div className="flex items-center gap-3">
+                      <User size={14} className="text-slate-400" />
+                      <span>{s.openedBy}</span>
+                      <span className="text-slate-500">{new Date(s.openedAt).toLocaleDateString()}</span>
+                    </div>
+                    <button
+                      onClick={() => { setSelectedShift(s); setShowZReport(true) }}
+                      className="text-[#22C55E] text-xs hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <FileText size={12} /> View Z-Report
+                    </button>
                   </div>
-                  <button
-                    onClick={() => { setSelectedShift(s); setShowZReport(true) }}
-                    className="text-[#22C55E] text-xs hover:underline flex items-center gap-1 cursor-pointer"
-                  >
-                    <FileText size={12} /> View Z-Report
-                  </button>
-                </div>
-              ))}
-              {shifts.filter((s) => s.status === 'closed').length === 0 && (
-                <p className="text-slate-500 text-sm text-center py-4">No completed shifts yet</p>
-              )}
+                ))}
+                {shifts.filter((s) => s.status === 'closed').length === 0 && (
+                  <p className="text-slate-500 text-sm text-center py-4">No completed shifts yet</p>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 

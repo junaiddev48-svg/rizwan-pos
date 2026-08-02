@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import supabase from '../../lib/supabase'
 import ProductForm from './ProductForm'
-import { Plus, Pencil, Trash2, ImageOff } from 'lucide-react'
+import StaffManager from './StaffManager'
+import { Plus, Pencil, Trash2, ImageOff, UtensilsCrossed, ShieldCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function AdminPanel() {
@@ -9,6 +10,7 @@ export default function AdminPanel() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editProduct, setEditProduct] = useState(null)
+  const [tab, setTab] = useState('products')
 
   useEffect(() => {
     let isMounted = true
@@ -50,6 +52,29 @@ export default function AdminPanel() {
 
   return (
     <div className="h-full overflow-y-auto p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <button
+          onClick={() => setTab('products')}
+          className={`px-4 py-2 rounded-xl text-sm font-bold transition cursor-pointer flex items-center gap-2 ${
+            tab === 'products' ? 'bg-[#22C55E] text-[#052E16]' : 'bg-[#334155] text-slate-300 hover:bg-[#475569]'
+          }`}
+        >
+          <UtensilsCrossed size={16} /> Menu Products
+        </button>
+        <button
+          onClick={() => setTab('staff')}
+          className={`px-4 py-2 rounded-xl text-sm font-bold transition cursor-pointer flex items-center gap-2 ${
+            tab === 'staff' ? 'bg-[#22C55E] text-[#052E16]' : 'bg-[#334155] text-slate-300 hover:bg-[#475569]'
+          }`}
+        >
+          <ShieldCheck size={16} /> Staff & Access
+        </button>
+      </div>
+
+      {tab === 'staff' ? (
+        <StaffManager />
+      ) : (
+      <>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">Menu Management</h1>
@@ -104,6 +129,8 @@ export default function AdminPanel() {
           onClose={() => { setShowForm(false); setEditProduct(null) }}
           onSaved={() => {}}
         />
+      )}
+      </>
       )}
     </div>
   )

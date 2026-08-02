@@ -28,5 +28,3 @@ export const ORDER_STATUS = {
   DELIVERED: 'delivered',
   CANCELLED: 'cancelled',
 }
-
-export const MANAGER_PIN = '1234'

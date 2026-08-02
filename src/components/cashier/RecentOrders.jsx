@@ -18,7 +18,7 @@ export default function RecentOrders({ onClose }) {
   const [reason, setReason] = useState('')
   const [showPin, setShowPin] = useState(false)
   const { activeShift } = useShift()
-  const { verifyPin } = useAuth()
+  const { checkPin } = useAuth()
 
   const refetch = useCallback(async (isMounted) => {
     if (!activeShift) return
@@ -210,9 +210,10 @@ export default function RecentOrders({ onClose }) {
 
       {showPin && (
         <PinInput
-          title="Manager PIN to Void"
-          onConfirm={(pin) => {
-            if (verifyPin(pin)) {
+          title="Owner PIN to Void"
+          onConfirm={async (pin) => {
+            const result = await checkPin(pin)
+            if (result.ok && result.user.role === 'owner') {
               setShowPin(false)
               return true
             }

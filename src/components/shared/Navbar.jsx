@@ -1,16 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { UtensilsCrossed, LayoutDashboard, Settings, Clock, Menu, X, RefreshCw, WifiOff } from 'lucide-react'
+import { UtensilsCrossed, Settings, Clock, Menu, X, RefreshCw, LogOut, User } from 'lucide-react'
 import useNetworkStatus from '../../hooks/useNetworkStatus'
 import useOfflineSync from '../../hooks/useOfflineSync'
 import { useShift } from '../../contexts/ShiftContext'
-
-const navItems = [
-  { path: '/', label: 'POS', icon: UtensilsCrossed },
-  { path: '/admin', label: 'Admin', icon: Settings },
-  { path: '/owner', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/shift', label: 'Shift', icon: Clock },
-]
+import { useAuth } from '../../contexts/AuthContext'
 
 export default function Navbar({ showOwnerView, onToggleOwnerView }) {
   const [time, setTime] = useState(new Date())
@@ -19,7 +13,14 @@ export default function Navbar({ showOwnerView, onToggleOwnerView }) {
   const isOnline = useNetworkStatus()
   const { queuedCount, syncing } = useOfflineSync()
   const { activeShift } = useShift()
+  const { user, isOwner, logout } = useAuth()
   const isPosRoute = location.pathname === '/'
+
+  const navItems = [
+    { path: '/', label: 'POS', icon: UtensilsCrossed },
+    ...(isOwner ? [{ path: '/admin', label: 'Admin', icon: Settings }] : []),
+    { path: '/shift', label: 'Shift', icon: Clock },
+  ]
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000)
@@ -30,7 +31,7 @@ export default function Navbar({ showOwnerView, onToggleOwnerView }) {
     <nav className="bg-[#1E293B] border-b border-[#334155] px-3 py-2 no-print">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <button className="lg:hidden p-1" onClick={() => setMenuOpen(!menuOpen)}>
+          <button className="lg:hidden p-1 cursor-pointer" onClick={() => setMenuOpen(!menuOpen)}>
             {menuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
           <UtensilsCrossed className="text-[#22C55E]" size={22} />
@@ -61,7 +62,7 @@ export default function Navbar({ showOwnerView, onToggleOwnerView }) {
         </div>
 
         <div className="flex items-center gap-2">
-          {isPosRoute && (
+          {isPosRoute && isOwner && (
             <button
               onClick={onToggleOwnerView}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
@@ -88,6 +89,20 @@ export default function Navbar({ showOwnerView, onToggleOwnerView }) {
               SHIFT ON
             </span>
           )}
+          {user && (
+            <div className="flex items-center gap-1.5 bg-[#334155] rounded-lg px-2 py-1">
+              <User size={12} className="text-slate-400" />
+              <span className="text-xs font-semibold text-slate-200">{user.name}</span>
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                isOwner ? 'bg-[#F59E0B] text-[#052E16]' : 'bg-[#22C55E]/20 text-[#22C55E]'
+              }`}>
+                {isOwner ? 'OWNER' : 'CASHIER'}
+              </span>
+              <button onClick={logout} title="Logout / Lock" className="text-slate-400 hover:text-[#EF4444] transition cursor-pointer">
+                <LogOut size={12} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -112,6 +127,23 @@ export default function Navbar({ showOwnerView, onToggleOwnerView }) {
               </Link>
             )
           })}
+          {isOwner && (
+            <Link
+              to="/"
+              onClick={() => { setMenuOpen(false); onToggleOwnerView() }}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-[#22C55E] bg-[#22C55E]/10"
+            >
+              📊 {showOwnerView ? 'Back to POS' : 'Owner View'}
+            </Link>
+          )}
+          {user && (
+            <button
+              onClick={() => { setMenuOpen(false); logout() }}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-[#EF4444] cursor-pointer"
+            >
+              <LogOut size={16} /> Logout ({user.name})
+            </button>
+          )}
         </div>
       )}
     </nav>

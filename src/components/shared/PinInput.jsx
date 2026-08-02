@@ -5,6 +5,24 @@ export default function PinInput({ onConfirm, onCancel, title }) {
   const [pin, setPin] = useState('')
   const [error, setError] = useState(false)
 
+  function validate(next) {
+    const result = onConfirm(next)
+    if (result && typeof result.then === 'function') {
+      result.then((valid) => {
+        if (valid) setPin('')
+        else {
+          setError(true)
+          setPin('')
+        }
+      })
+    } else if (result) {
+      setPin('')
+    } else {
+      setError(true)
+      setPin('')
+    }
+  }
+
   useEffect(() => {
     function onKeyDown(e) {
       if (e.key === 'Escape') {
@@ -18,13 +36,7 @@ export default function PinInput({ onConfirm, onCancel, title }) {
         setError(false)
         const next = pin + e.key
         setPin(next)
-        if (next.length === 4) {
-          const valid = onConfirm(next)
-          if (!valid) {
-            setError(true)
-            setPin('')
-          }
-        }
+        if (next.length === 4) validate(next)
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -36,13 +48,7 @@ export default function PinInput({ onConfirm, onCancel, title }) {
       const newPin = pin + d
       setPin(newPin)
       setError(false)
-      if (newPin.length === 4) {
-        const valid = onConfirm(newPin)
-        if (!valid) {
-          setError(true)
-          setPin('')
-        }
-      }
+      if (newPin.length === 4) validate(newPin)
     }
   }
 

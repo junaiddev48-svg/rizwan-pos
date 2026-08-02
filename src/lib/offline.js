@@ -42,6 +42,14 @@ export function getCachedOrders() {
   return getCache('orders')
 }
 
+export function cacheStaff(staff) {
+  setCache('staff', staff, 1440)
+}
+
+export function getCachedStaff() {
+  return getCache('staff')
+}
+
 const QUEUE_KEY = CACHE_PREFIX + 'order_queue'
 
 export function getOrderQueue() {
