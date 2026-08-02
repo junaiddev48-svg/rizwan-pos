@@ -7,6 +7,7 @@ const KEYS = [['1','2','3'],['4','5','6'],['7','8','9'],['C','0','']]
 export default function LoginScreen() {
   const [pin, setPin] = useState('')
   const [error, setError] = useState('')
+  const [note, setNote] = useState('')
   const { login, authLoading } = useAuth()
 
   useEffect(() => {
@@ -28,10 +29,15 @@ export default function LoginScreen() {
     const next = pin + d
     setPin(next)
     setError('')
+    setNote('')
     if (next.length === 4) {
       setPin('')
       const result = await login(next)
-      if (!result.ok) setError(result.error || 'Invalid PIN')
+      if (result.ok && result.fallback) {
+        setNote('Default owner account in use. Add staff accounts in Admin → Staff & Access for full control.')
+      } else if (!result.ok) {
+        setError(result.error || 'Invalid PIN')
+      }
     }
   }
 
@@ -66,6 +72,9 @@ export default function LoginScreen() {
 
         {error && (
           <p className="text-center text-[#EF4444] text-sm mb-3">{error}</p>
+        )}
+        {note && (
+          <p className="text-center text-[#F59E0B] text-xs mb-3">{note}</p>
         )}
         {authLoading && (
           <p className="text-center text-[#F59E0B] text-sm mb-3">Verifying...</p>

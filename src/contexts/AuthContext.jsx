@@ -53,24 +53,32 @@ export function AuthProvider({ children }) {
 
   async function findStaff(pin) {
     const pinStr = String(pin).trim()
-    let staff = getCachedStaff() || []
+
+    let staff = getCachedStaff()
+    if (!Array.isArray(staff)) staff = []
 
     const { data, error } = await supabase
       .from('staff')
       .select('*')
-      .eq('pin', pinStr)
       .eq('isActive', true)
-      .maybeSingle()
 
-    if (!error && data) {
-      staff = [data]
-      cacheStaff([data])
+    if (!error && Array.isArray(data)) {
+      staff = data
+      cacheStaff(data)
     }
 
     const match = staff.find((s) => s.pin === pinStr && s.isActive)
     if (match) {
       return { ok: true, user: { id: match.id, name: match.name, role: match.role } }
     }
+
+    if (staff.length === 0) {
+      if (pinStr === '1234') {
+        return { ok: true, user: { id: 'local-owner', name: 'Owner', role: 'owner' }, fallback: true }
+      }
+      return { ok: false, error: 'No staff accounts found. Owner default PIN is 1234.' }
+    }
+
     return { ok: false, error: 'Invalid PIN' }
   }
 
