@@ -13,12 +13,12 @@ export default function Navbar({ showOwnerView, onToggleOwnerView }) {
   const isOnline = useNetworkStatus()
   const { queuedCount, syncing } = useOfflineSync()
   const { activeShift } = useShift()
-  const { user, isOwner, logout } = useAuth()
+  const { user, isOwner, isManager, logout } = useAuth()
   const isPosRoute = location.pathname === '/'
 
   const navItems = [
     { path: '/', label: 'POS', icon: UtensilsCrossed },
-    ...(isOwner ? [{ path: '/admin', label: 'Admin', icon: Settings }] : []),
+    ...(isManager ? [{ path: '/admin', label: 'Admin', icon: Settings }] : []),
     { path: '/shift', label: 'Shift', icon: Clock },
   ]
 
@@ -94,9 +94,9 @@ export default function Navbar({ showOwnerView, onToggleOwnerView }) {
               <User size={12} className="text-slate-400" />
               <span className="text-xs font-semibold text-slate-200">{user.name}</span>
               <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                isOwner ? 'bg-[#F59E0B] text-[#052E16]' : 'bg-[#22C55E]/20 text-[#22C55E]'
+                user.role === 'owner' ? 'bg-[#F59E0B] text-[#052E16]' : user.role === 'admin' ? 'bg-[#3B82F6]/20 text-[#3B82F6]' : 'bg-[#22C55E]/20 text-[#22C55E]'
               }`}>
-                {isOwner ? 'OWNER' : 'CASHIER'}
+                {user.role === 'owner' ? 'OWNER' : user.role === 'admin' ? 'ADMIN' : 'CASHIER'}
               </span>
               <button onClick={logout} title="Logout / Lock" className="text-slate-400 hover:text-[#EF4444] transition cursor-pointer">
                 <LogOut size={12} />

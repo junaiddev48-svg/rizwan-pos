@@ -12,7 +12,7 @@ export default function ShiftManager() {
   const [showZReport, setShowZReport] = useState(false)
   const [selectedShift, setSelectedShift] = useState(null)
   const { activeShift, shifts, loading, openShift, closeShift } = useShift()
-  const { user, isOwner } = useAuth()
+  const { user, isOwner, isAdmin } = useAuth()
 
   useEffect(() => {
     if (!activeShift) return
@@ -92,7 +92,7 @@ export default function ShiftManager() {
               <input
                 value={cashierName}
                 onChange={(e) => setCashierName(e.target.value)}
-                placeholder={isOwner ? 'Enter cashier name' : user?.name || 'Enter your name'}
+                placeholder={isOwner || isAdmin ? 'Enter cashier name' : user?.name || 'Enter your name'}
                 className="w-full bg-[#334155] text-slate-100 rounded-xl px-4 py-3 text-sm border border-[#475569] placeholder-slate-500"
               />
             </div>

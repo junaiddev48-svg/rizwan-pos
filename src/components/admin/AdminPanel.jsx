@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import supabase from '../../lib/supabase'
 import ProductForm from './ProductForm'
 import StaffManager from './StaffManager'
+import { useAuth } from '../../contexts/AuthContext'
 import { Plus, Pencil, Trash2, ImageOff, UtensilsCrossed, ShieldCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -11,6 +12,7 @@ export default function AdminPanel() {
   const [showForm, setShowForm] = useState(false)
   const [editProduct, setEditProduct] = useState(null)
   const [tab, setTab] = useState('products')
+  const { isOwner } = useAuth()
 
   useEffect(() => {
     let isMounted = true
@@ -61,6 +63,7 @@ export default function AdminPanel() {
         >
           <UtensilsCrossed size={16} /> Menu Products
         </button>
+        {isOwner && (
         <button
           onClick={() => setTab('staff')}
           className={`px-4 py-2 rounded-xl text-sm font-bold transition cursor-pointer flex items-center gap-2 ${
@@ -69,6 +72,7 @@ export default function AdminPanel() {
         >
           <ShieldCheck size={16} /> Staff & Access
         </button>
+        )}
       </div>
 
       {tab === 'staff' ? (

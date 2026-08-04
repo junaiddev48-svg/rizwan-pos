@@ -36,6 +36,13 @@ function RequireOwner({ children }) {
   return children
 }
 
+function RequireAdmin({ children }) {
+  const { user, isManager } = useAuth()
+  if (!user) return <Navigate to="/" replace />
+  if (!isManager) return <Navigate to="/" replace />
+  return children
+}
+
 function RequireAuth({ children }) {
   const { user } = useAuth()
   if (!user) return <Navigate to="/" replace />
@@ -56,7 +63,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<PosPage />} />
-      <Route path="/admin" element={<RequireOwner><Layout><AdminPanel /></Layout></RequireOwner>} />
+      <Route path="/admin" element={<RequireAdmin><Layout><AdminPanel /></Layout></RequireAdmin>} />
       <Route path="/owner" element={<Navigate to="/" replace />} />
       <Route path="/shift" element={<RequireAuth><Layout><ShiftManager /></Layout></RequireAuth>} />
       <Route path="*" element={<Navigate to="/" replace />} />

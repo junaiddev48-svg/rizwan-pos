@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import supabase from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
-import { UserPlus, Pencil, Trash2, ShieldCheck, Power } from 'lucide-react'
+import { UserPlus, Pencil, Trash2, ShieldCheck, Power, Lock } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function StaffManager() {
@@ -12,7 +12,8 @@ export default function StaffManager() {
   const [newPin, setNewPin] = useState('')
   const [editing, setEditing] = useState(null)
   const [editPin, setEditPin] = useState('')
-  const { user } = useAuth()
+  const [newRole, setNewRole] = useState('cashier')
+  const { user, isOwner } = useAuth()
 
   useEffect(() => {
     let isMounted = true
@@ -49,19 +50,24 @@ export default function StaffManager() {
     if (!newName.trim()) return toast.error('Enter staff name')
     if (!/^\d{4}$/.test(newPin)) return toast.error('PIN must be exactly 4 digits')
 
+    const role = isOwner ? newRole : 'cashier'
     const { error } = await supabase.from('staff').insert([
-      { name: newName.trim(), pin: newPin, role: 'cashier' },
+      { name: newName.trim(), pin: newPin, role },
     ])
     if (error) toast.error('Failed to add staff')
     else {
-      toast.success(`${newName.trim()} added as cashier`)
+      toast.success(`${newName.trim()} added as ${role}`)
       setNewName('')
       setNewPin('')
+      setNewRole('cashier')
       setShowAdd(false)
     }
   }
 
   async function handleSavePin(staffMember) {
+    if (!isOwner && staffMember.role !== 'cashier') {
+      return toast.error('You can only change PINs of cashier accounts')
+    }
     if (!/^\d{4}$/.test(editPin)) return toast.error('PIN must be exactly 4 digits')
     const { error } = await supabase.from('staff').update({ pin: editPin }).eq('id', staffMember.id)
     if (error) toast.error('Failed to update PIN')
@@ -73,6 +79,9 @@ export default function StaffManager() {
   }
 
   async function handleToggleActive(staffMember) {
+    if (!isOwner && staffMember.role !== 'cashier') {
+      return toast.error('You can only manage cashier accounts')
+    }
     const owners = staff.filter((s) => s.role === 'owner' && s.isActive)
     if (staffMember.role === 'owner' && staffMember.isActive && owners.length <= 1) {
       return toast.error('Cannot disable the last active owner')
@@ -86,6 +95,9 @@ export default function StaffManager() {
   }
 
   async function handleDelete(staffMember) {
+    if (!isOwner && staffMember.role !== 'cashier') {
+      return toast.error('You can only manage cashier accounts')
+    }
     if (staffMember.id === user?.id) return toast.error('You cannot delete your own account')
     const owners = staff.filter((s) => s.role === 'owner')
     if (staffMember.role === 'owner' && owners.length <= 1) {
@@ -118,17 +130,37 @@ export default function StaffManager() {
           onClick={() => setShowAdd(!showAdd)}
           className="bg-[#22C55E] text-[#052E16] font-bold px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-[#16A34A] transition cursor-pointer"
         >
-          <UserPlus size={18} /> {showAdd ? 'Cancel' : 'Add Cashier'}
+          <UserPlus size={18} /> {showAdd ? 'Cancel' : isOwner ? 'Add Staff' : 'Add Cashier'}
         </button>
       </div>
 
       {showAdd && (
         <div className="bg-[#1E293B] border border-[#334155] rounded-xl p-4 space-y-3">
+          {isOwner && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setNewRole('cashier')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-bold transition cursor-pointer ${
+                  newRole === 'cashier' ? 'bg-[#22C55E] text-[#052E16]' : 'bg-[#334155] text-slate-300 hover:bg-[#475569]'
+                }`}
+              >
+                Cashier
+              </button>
+              <button
+                onClick={() => setNewRole('admin')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-bold transition cursor-pointer ${
+                  newRole === 'admin' ? 'bg-[#3B82F6] text-white' : 'bg-[#334155] text-slate-300 hover:bg-[#475569]'
+                }`}
+              >
+                Admin
+              </button>
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder="Cashier name"
+              placeholder="Staff name"
               className="w-full bg-[#334155] text-slate-100 rounded-xl px-3 py-2 text-sm border border-[#475569] placeholder-slate-500"
             />
             <input
@@ -140,7 +172,7 @@ export default function StaffManager() {
             />
           </div>
           <button onClick={handleAdd} className="bg-[#22C55E] text-[#052E16] font-bold px-4 py-2 rounded-xl hover:bg-[#16A34A] transition cursor-pointer">
-            Save Cashier
+            Save {newRole === 'admin' ? 'Admin' : 'Cashier'}
           </button>
         </div>
       )}
@@ -149,7 +181,7 @@ export default function StaffManager() {
         {staff.map((s) => (
           <div key={s.id} className="bg-[#1E293B] border border-[#334155] rounded-xl p-3 flex items-center gap-3">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-              s.role === 'owner' ? 'bg-[#F59E0B] text-[#052E16]' : 'bg-[#334155] text-slate-300'
+              s.role === 'owner' ? 'bg-[#F59E0B] text-[#052E16]' : s.role === 'admin' ? 'bg-[#3B82F6] text-white' : 'bg-[#334155] text-slate-300'
             }`}>
               {s.name.charAt(0).toUpperCase()}
             </div>
@@ -157,7 +189,7 @@ export default function StaffManager() {
               <div className="flex items-center gap-2">
                 <span className="font-semibold truncate">{s.name}{s.id === user?.id ? ' (you)' : ''}</span>
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                  s.role === 'owner' ? 'bg-[#F59E0B]/20 text-[#F59E0B]' : 'bg-[#22C55E]/20 text-[#22C55E]'
+                  s.role === 'owner' ? 'bg-[#F59E0B]/20 text-[#F59E0B]' : s.role === 'admin' ? 'bg-[#3B82F6]/20 text-[#3B82F6]' : 'bg-[#22C55E]/20 text-[#22C55E]'
                 }`}>
                   {s.role.toUpperCase()}
                 </span>
@@ -166,6 +198,11 @@ export default function StaffManager() {
               <div className="text-xs text-slate-500 font-mono">PIN: {s.pin}</div>
             </div>
 
+            {!isOwner && s.role !== 'cashier' ? (
+              <div className="flex items-center gap-1.5 text-[#F59E0B] text-[10px] bg-[#F59E0B]/10 px-2.5 py-1.5 rounded-lg font-semibold" title="Only the owner can manage admin and owner accounts">
+                <Lock size={12} /> Owner only
+              </div>
+            ) : (
             <div className="flex gap-1">
               <button
                 onClick={() => { setEditing(editing?.id === s.id ? null : s); setEditPin('') }}
@@ -191,6 +228,7 @@ export default function StaffManager() {
                 <Trash2 size={16} />
               </button>
             </div>
+            )}
           </div>
         ))}
 

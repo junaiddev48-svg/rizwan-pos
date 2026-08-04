@@ -49,10 +49,13 @@ CREATE TABLE IF NOT EXISTS staff (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   pin TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'cashier',
+  role TEXT NOT NULL DEFAULT 'cashier' CHECK (role IN ('owner', 'admin', 'cashier')),
   "isActive" BOOLEAN DEFAULT true,
   "createdAt" TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- For the live DB (run once in SQL Editor):
+-- ALTER TABLE staff ADD CONSTRAINT staff_role_check CHECK (role IN ('owner', 'admin', 'cashier'));
 
 ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS products;
 ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS orders;
