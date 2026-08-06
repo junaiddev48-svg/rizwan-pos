@@ -9,6 +9,7 @@ import OwnerView from './components/owner/OwnerView'
 import ShiftManager from './components/shift/ShiftManager'
 import Navbar from './components/shared/Navbar'
 import LoginScreen from './components/auth/LoginScreen'
+import ManagerPinGate from './components/auth/ManagerPinGate'
 
 function Layout({ children, showOwnerView, onToggleOwnerView }) {
   return (
@@ -63,7 +64,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<PosPage />} />
-      <Route path="/admin" element={<RequireAdmin><Layout><AdminPanel /></Layout></RequireAdmin>} />
+      <Route path="/admin" element={<RequireAdmin><Layout><ManagerPinGate><AdminPanel /></ManagerPinGate></Layout></RequireAdmin>} />
       <Route path="/owner" element={<Navigate to="/" replace />} />
       <Route path="/shift" element={<RequireAuth><Layout><ShiftManager /></Layout></RequireAuth>} />
       <Route path="*" element={<Navigate to="/" replace />} />

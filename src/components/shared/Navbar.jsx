@@ -98,8 +98,8 @@ export default function Navbar({ showOwnerView, onToggleOwnerView }) {
               }`}>
                 {user.role === 'owner' ? 'OWNER' : user.role === 'admin' ? 'ADMIN' : 'CASHIER'}
               </span>
-              <button onClick={logout} title="Logout / Lock" className="text-slate-400 hover:text-[#EF4444] transition cursor-pointer">
-                <LogOut size={12} />
+              <button onClick={logout} title="Lock screen / switch account" className="flex items-center gap-1 ml-1 text-[10px] font-bold bg-[#EF4444]/15 text-[#EF4444] px-2 py-1.5 rounded-lg hover:bg-[#EF4444]/25 transition cursor-pointer">
+                <LogOut size={12} /> LOCK
               </button>
             </div>
           )}
