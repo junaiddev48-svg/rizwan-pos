@@ -1,16 +1,30 @@
 import { useState, useEffect } from 'react'
 import supabase from '../../lib/supabase'
 import { useShift } from '../../contexts/ShiftContext'
-import { getCachedOrders } from '../../lib/offline'
+import { getCachedOrders, getOrderQueue } from '../../lib/offline'
 import { useCancellations, dismissCancellation } from '../../lib/cancellations'
 import { CheckCircle, ChefHat, Clock, AlertTriangle, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function KitchenView({ onClose }) {
   const [orders, setOrders] = useState([])
+  const [queued, setQueued] = useState([])
   const [loading, setLoading] = useState(true)
   const cancelled = useCancellations()
   const { activeShift } = useShift()
+
+  useEffect(() => {
+    function refreshQueued() {
+      setQueued(getOrderQueue().filter((o) => o.shiftId === activeShift?.id))
+    }
+    refreshQueued()
+    window.addEventListener('order-queued', refreshQueued)
+    window.addEventListener('online', refreshQueued)
+    return () => {
+      window.removeEventListener('order-queued', refreshQueued)
+      window.removeEventListener('online', refreshQueued)
+    }
+  }, [activeShift])
 
   useEffect(() => {
     if (!activeShift) { setLoading(false); return }
@@ -74,12 +88,13 @@ export default function KitchenView({ onClose }) {
   }, [onClose])
 
   async function markReady(order) {
+    if (order._isQueued) return
     const { error } = await supabase.from('orders').update({ status: 'ready' }).eq('id', order.id)
     if (error) toast.error('Failed to update')
     else toast.success(`Order #${order.tokenNumber} ready!`)
   }
 
-  if (loading && orders.length === 0) {
+  if (loading && orders.length === 0 && queued.length === 0) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="animate-spin w-8 h-8 border-2 border-[#22C55E] border-t-transparent rounded-full" />
@@ -87,8 +102,13 @@ export default function KitchenView({ onClose }) {
     )
   }
 
-  const preparing = orders.filter((o) => o.status === 'preparing')
-  const ready = orders.filter((o) => o.status === 'ready')
+  const allOrders = [
+    ...queued.map((q) => ({ ...q, id: q.orderId, _isQueued: true })),
+    ...orders.filter((o) => !queued.some((q) => q.orderId === o.orderId)),
+  ].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+
+  const preparing = allOrders.filter((o) => o.status === 'preparing')
+  const ready = allOrders.filter((o) => o.status === 'ready')
 
   return (
     <div data-modal className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
@@ -138,7 +158,7 @@ export default function KitchenView({ onClose }) {
             </div>
           )}
 
-          {orders.length === 0 && cancelled.length === 0 ? (
+          {allOrders.length === 0 && cancelled.length === 0 ? (
             <p className="text-center text-slate-500 py-10">No active orders</p>
           ) : (
             <>
@@ -150,32 +170,38 @@ export default function KitchenView({ onClose }) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {preparing.map((order) => (
                       <div key={order.id} className="bg-[#1E293B] border border-[#F59E0B]/30 rounded-xl p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <span className="text-2xl font-black text-[#F59E0B]">#{order.tokenNumber}</span>
-                            <span className="text-xs text-slate-500 ml-2">{order.orderType.toUpperCase()}{order.tableNumber ? ` - ${order.tableNumber}` : ''}</span>
-                          </div>
-                          <span className="text-xs text-slate-500">{new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                        </div>
-                        <div className="space-y-1 text-sm">
-                          {order.items.map((item, i) => (
-                            <div key={i}>
-                              <div className="font-medium">{item.quantity}x {item.name}</div>
-                              {(item.selectedModifiers || []).map((m, mi) => (
-                                <div key={mi} className="text-xs text-slate-400 pl-3">+ {m.name}</div>
-                              ))}
-                              {item.itemNotes && <div className="text-xs text-[#F59E0B] italic pl-3">* {item.itemNotes}</div>}
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <span className="text-2xl font-black text-[#F59E0B]">#{order.tokenNumber}</span>
+                              <span className="text-xs text-slate-500 ml-2">{order.orderType.toUpperCase()}{order.tableNumber ? ` - ${order.tableNumber}` : ''}</span>
                             </div>
-                          ))}
+                            {order._isQueued ? (
+                              <span className="text-[10px] font-bold bg-[#F59E0B]/20 text-[#F59E0B] px-2 py-0.5 rounded">PENDING SYNC</span>
+                            ) : (
+                              <span className="text-xs text-slate-500">{new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            )}
+                          </div>
+                          <div className="space-y-1 text-sm">
+                            {order.items.map((item, i) => (
+                              <div key={i}>
+                                <div className="font-medium">{item.quantity}x {item.name}</div>
+                                {(item.selectedModifiers || []).map((m, mi) => (
+                                  <div key={mi} className="text-xs text-slate-400 pl-3">+ {m.name}</div>
+                                ))}
+                                {item.itemNotes && <div className="text-xs text-[#F59E0B] italic pl-3">* {item.itemNotes}</div>}
+                              </div>
+                            ))}
+                          </div>
+                          {!order._isQueued && (
+                            <button onClick={() => markReady(order)} className="w-full mt-3 bg-[#22C55E] text-[#052E16] font-bold py-3 rounded-xl text-sm hover:bg-[#16A34A] transition flex items-center justify-center gap-2 cursor-pointer">
+                              <CheckCircle size={16} /> Mark Ready
+                            </button>
+                          )}
                         </div>
-                        <button onClick={() => markReady(order)} className="w-full mt-3 bg-[#22C55E] text-[#052E16] font-bold py-3 rounded-xl text-sm hover:bg-[#16A34A] transition flex items-center justify-center gap-2 cursor-pointer">
-                          <CheckCircle size={16} /> Mark Ready
-                        </button>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {ready.length > 0 && (
                 <div>

@@ -8,6 +8,7 @@ import AdminPanel from './components/admin/AdminPanel'
 import OwnerView from './components/owner/OwnerView'
 import ShiftManager from './components/shift/ShiftManager'
 import Navbar from './components/shared/Navbar'
+import ErrorBoundary from './components/shared/ErrorBoundary'
 import LoginScreen from './components/auth/LoginScreen'
 import ManagerPinGate from './components/auth/ManagerPinGate'
 
@@ -74,14 +75,16 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <ShiftProvider>
-          <OrderProvider>
-            <AppRoutes />
-          </OrderProvider>
-        </ShiftProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AuthProvider>
+          <ShiftProvider>
+            <OrderProvider>
+              <AppRoutes />
+            </OrderProvider>
+          </ShiftProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   )
 }

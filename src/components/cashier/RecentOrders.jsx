@@ -4,7 +4,7 @@ import { X, Printer, ShieldBan, CheckCircle, Undo2 } from 'lucide-react'
 import { useShift } from '../../contexts/ShiftContext'
 import { useAuth } from '../../contexts/AuthContext'
 import { printCustomerReceipt } from '../../lib/printing'
-import { getCachedOrders, cacheOrders } from '../../lib/offline'
+import { getCachedOrders, cacheOrders, getOrderQueue } from '../../lib/offline'
 import PinInput from '../shared/PinInput'
 import LoadingSpinner from '../shared/LoadingSpinner'
 import toast from 'react-hot-toast'
@@ -13,12 +13,26 @@ const LIMIT = 50
 
 export default function RecentOrders({ onClose }) {
   const [orders, setOrders] = useState([])
+  const [queued, setQueued] = useState([])
   const [loading, setLoading] = useState(true)
   const [voidTarget, setVoidTarget] = useState(null)
   const [reason, setReason] = useState('')
   const [showPin, setShowPin] = useState(false)
   const { activeShift } = useShift()
   const { checkPin } = useAuth()
+
+  useEffect(() => {
+    function refreshQueued() {
+      setQueued(getOrderQueue().filter((o) => o.shiftId === activeShift?.id))
+    }
+    refreshQueued()
+    window.addEventListener('order-queued', refreshQueued)
+    window.addEventListener('online', refreshQueued)
+    return () => {
+      window.removeEventListener('order-queued', refreshQueued)
+      window.removeEventListener('online', refreshQueued)
+    }
+  }, [activeShift])
 
   const refetch = useCallback(async (isMounted) => {
     if (!activeShift) return
@@ -123,11 +137,17 @@ export default function RecentOrders({ onClose }) {
 
   if (loading) return <LoadingSpinner />
 
+  const merged = [
+    ...queued.map((q) => ({ ...q, id: q.orderId, _isQueued: true })),
+    ...orders.filter((o) => !queued.some((q) => q.orderId === o.orderId)),
+  ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, LIMIT)
+
   const statusColor = {
     preparing: 'bg-[#F59E0B]/20 text-[#F59E0B]',
     ready: 'bg-[#22C55E]/20 text-[#22C55E]',
     served: 'bg-[#3B82F6]/20 text-[#3B82F6]',
     cancelled: 'bg-[#EF4444]/20 text-[#EF4444]',
+    pending: 'bg-[#F59E0B]/20 text-[#F59E0B]',
   }
 
   return (
@@ -139,22 +159,28 @@ export default function RecentOrders({ onClose }) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
-          {orders.length === 0 ? (
+          {merged.length === 0 ? (
             <p className="text-center text-slate-500 py-10">No orders yet this shift</p>
           ) : (
-            orders.map((order) => (
+            merged.map((order) => (
               <div
                 key={order.id}
                 className={`bg-[#1E293B] rounded-xl p-3 border ${
-                  order.status === 'cancelled' ? 'border-[#EF4444]/30 opacity-60' : 'border-[#334155]'
+                  order.status === 'cancelled' ? 'border-[#EF4444]/30 opacity-60' : order._isQueued ? 'border-[#F59E0B]/40' : 'border-[#334155]'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className="text-lg font-bold text-[#F59E0B]">#{order.tokenNumber}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded ${statusColor[order.status] || ''}`}>
-                      {order.status.toUpperCase()}
-                    </span>
+                    {order._isQueued ? (
+                      <span className="text-xs px-2 py-0.5 rounded bg-[#F59E0B]/20 text-[#F59E0B] font-semibold">
+                        PENDING SYNC
+                      </span>
+                    ) : (
+                      <span className={`text-xs px-2 py-0.5 rounded ${statusColor[order.status] || ''}`}>
+                        {order.status.toUpperCase()}
+                      </span>
+                    )}
                     <span className="text-xs text-slate-500">{order.orderType.toUpperCase()}</span>
                     {order.tableNumber && <span className="text-xs text-slate-400">{order.tableNumber}</span>}
                   </div>
@@ -178,6 +204,8 @@ export default function RecentOrders({ onClose }) {
                   <button onClick={() => handleReprint(order)} className="btn-secondary text-xs flex items-center gap-1 py-1 px-2 cursor-pointer">
                     <Printer size={12} /> Reprint
                   </button>
+                  {!order._isQueued && (
+                    <>
                   {order.status === 'preparing' && (
                     <button onClick={() => updateStatus(order, 'ready')} className="text-xs flex items-center gap-1 py-1 px-2 bg-[#22C55E]/10 text-[#22C55E] rounded-lg hover:bg-[#22C55E]/20 transition cursor-pointer">
                       <CheckCircle size={12} /> Mark Ready
@@ -200,6 +228,8 @@ export default function RecentOrders({ onClose }) {
                     >
                       <ShieldBan size={12} /> Void
                     </button>
+                  )}
+                    </>
                   )}
                 </div>
               </div>

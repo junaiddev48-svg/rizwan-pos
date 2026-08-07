@@ -1,12 +1,17 @@
 const CACHE_PREFIX = 'rizwan_'
+const CACHE_VERSION = 2
+
+function cacheKey(key) {
+  return `${CACHE_PREFIX}${key}_v${CACHE_VERSION}`
+}
 
 export function getCache(key) {
   try {
-    const raw = localStorage.getItem(CACHE_PREFIX + key)
+    const raw = localStorage.getItem(cacheKey(key))
     if (!raw) return null
     const { data, expiry } = JSON.parse(raw)
     if (expiry && Date.now() > expiry) {
-      localStorage.removeItem(CACHE_PREFIX + key)
+      localStorage.removeItem(cacheKey(key))
       return null
     }
     return data
@@ -15,7 +20,7 @@ export function getCache(key) {
 
 export function setCache(key, data, ttlMinutes = 60) {
   try {
-    localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({
+    localStorage.setItem(cacheKey(key), JSON.stringify({
       data,
       expiry: Date.now() + ttlMinutes * 60 * 1000,
     }))
@@ -23,7 +28,7 @@ export function setCache(key, data, ttlMinutes = 60) {
 }
 
 export function removeCache(key) {
-  localStorage.removeItem(CACHE_PREFIX + key)
+  localStorage.removeItem(cacheKey(key))
 }
 
 export function cacheProducts(products) {
@@ -50,7 +55,7 @@ export function getCachedStaff() {
   return getCache('staff')
 }
 
-const QUEUE_KEY = CACHE_PREFIX + 'order_queue'
+const QUEUE_KEY = `${CACHE_PREFIX}order_queue_v${CACHE_VERSION}`
 
 export function getOrderQueue() {
   try {
@@ -73,6 +78,16 @@ export function removeFromOrderQueue(index) {
   try {
     localStorage.setItem(QUEUE_KEY, JSON.stringify(queue))
   } catch { /* storage full */ }
+}
+
+export function incrementQueueAttempt(index) {
+  const queue = getOrderQueue()
+  if (queue[index]) {
+    queue[index]._attempts = (queue[index]._attempts || 0) + 1
+    try {
+      localStorage.setItem(QUEUE_KEY, JSON.stringify(queue))
+    } catch { /* storage full */ }
+  }
 }
 
 export function clearOrderQueue() {

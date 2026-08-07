@@ -4,6 +4,7 @@ import {
   getOrderQueue,
   removeFromOrderQueue,
   addToOrderQueue,
+  incrementQueueAttempt,
   getQueuedOrdersCount,
   clearExpiredOrders,
 } from '../lib/offline'
@@ -54,12 +55,17 @@ export default function useOfflineSync() {
 
     for (let i = queue.length - 1; i >= 0; i--) {
       const order = queue[i]
-      const { _queuedAt, ...orderData } = order
+      const { _queuedAt, _attempts = 0, ...orderData } = order
 
       const { error } = await supabase.from('orders').insert([orderData])
       if (!error) {
         removeFromOrderQueue(i)
         synced++
+      } else if (_attempts + 1 >= 5) {
+        removeFromOrderQueue(i)
+        toast.error('Skipped an old offline order that kept failing to sync')
+      } else {
+        incrementQueueAttempt(i)
       }
     }
 
@@ -68,6 +74,7 @@ export default function useOfflineSync() {
     }
     setQueuedCount(getQueuedOrdersCount())
     setSyncing(false)
+    window.dispatchEvent(new Event('order-queued'))
   }, [])
 
   function queueOrder(order) {
