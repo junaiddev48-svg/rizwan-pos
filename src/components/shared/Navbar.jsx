@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { UtensilsCrossed, Settings, Clock, Menu, X, RefreshCw, LogOut, User } from 'lucide-react'
+import { UtensilsCrossed, Settings, Clock, Menu, X, RefreshCw, LogOut, User, LayoutDashboard } from 'lucide-react'
 import useNetworkStatus from '../../hooks/useNetworkStatus'
 import useOfflineSync from '../../hooks/useOfflineSync'
 import { useShift } from '../../contexts/ShiftContext'
@@ -65,13 +65,14 @@ export default function Navbar({ showOwnerView, onToggleOwnerView }) {
           {isPosRoute && isOwner && (
             <button
               onClick={onToggleOwnerView}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
                 showOwnerView
-                  ? 'bg-[#22C55E] text-[#052E16] shadow-lg shadow-[#22C55E]/20'
-                  : 'bg-[#334155] text-slate-300 hover:bg-[#475569]'
+                  ? 'bg-[#334155] text-[#22C55E]'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-[#334155]'
               }`}
             >
-              {showOwnerView ? '◀ BACK TO POS' : '📊 OWNER VIEW'}
+              <LayoutDashboard size={14} />
+              {showOwnerView ? 'Back to POS' : 'Owner View'}
             </button>
           )}
           {queuedCount > 0 && (
@@ -133,7 +134,8 @@ export default function Navbar({ showOwnerView, onToggleOwnerView }) {
               onClick={() => { setMenuOpen(false); onToggleOwnerView() }}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-[#22C55E] bg-[#22C55E]/10"
             >
-              📊 {showOwnerView ? 'Back to POS' : 'Owner View'}
+              <LayoutDashboard size={16} />
+              {showOwnerView ? 'Back to POS' : 'Owner View'}
             </Link>
           )}
           {user && (
